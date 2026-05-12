@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
 const UNITS = ["g", "kg", "ml", "L", "개", "tsp", "tbsp", "컵"];
-const TODAY = "2026-04-25";
 
 const EMOJI_PALETTE = [
   "🌾","🍬","🥛","🥚","🫧","🌿","🌰","📦","🍫","🍋","🫐","🍓",
@@ -76,56 +75,31 @@ export default function BakingInventory() {
   const [form, setForm] = useState({ name: "", category: "", quantity: "", unit: "g", minStock: "", expiry: "" });
   const [notification, setNotification] = useState(null);
 
+  const [dismissedBanners, setDismissedBanners] = useState([]);
+
   // ── 저장/불러오기 ──────────────────────────────────────────
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await window.storage.get("baking:items");
-        if (r?.value) setItems(JSON.parse(r.value));
-      } catch (_) {
-        // window.storage 없으면 localStorage 시도
-        try { const v = localStorage.getItem("baking:items"); if (v) setItems(JSON.parse(v)); } catch (_) {}
+    try { const v = localStorage.getItem("baking:items"); if (v) setItems(JSON.parse(v)); } catch (_) {}
+    try {
+      const v = localStorage.getItem("baking:cats");
+      if (v) {
+        const parsed = JSON.parse(v);
+        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
+          setCategories(parsed.map(name => DEFAULT_CATEGORIES.find(c => c.name === name) || { name, icon: "📦", color: "#b8c8d8" }));
+        } else { setCategories(parsed); }
       }
-      try {
-        const r = await window.storage.get("baking:cats");
-        if (r?.value) {
-          const parsed = JSON.parse(r.value);
-          if (Array.isArray(parsed) && typeof parsed[0] === "string") {
-            setCategories(parsed.map(name => DEFAULT_CATEGORIES.find(c => c.name === name) || { name, icon: "📦", color: "#b8c8d8" }));
-          } else {
-            setCategories(parsed);
-          }
-        }
-      } catch (_) {
-        try { const v = localStorage.getItem("baking:cats"); if (v) setCategories(JSON.parse(v)); } catch (_) {}
-      }
-      setLoaded(true);
-    })();
+    } catch (_) {}
+    try { const v = localStorage.getItem("baking:dismissed"); if (v) setDismissedBanners(JSON.parse(v)); } catch (_) {}
+    setLoaded(true);
   }, []);
+  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:items", JSON.stringify(items)); } catch (_) {} }, [items, loaded]);
+  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:cats", JSON.stringify(categories)); } catch (_) {} }, [categories, loaded]);
+  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:dismissed", JSON.stringify(dismissedBanners)); } catch (_) {} }, [dismissedBanners, loaded]);
 
-  useEffect(() => {
-    if (!loaded) return;
-    const save = async () => {
-      const data = JSON.stringify(items);
-      try { await window.storage.set("baking:items", data); } catch (_) {
-        try { localStorage.setItem("baking:items", data); } catch (_) {}
-      }
-    };
-    save();
-  }, [items, loaded]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    const save = async () => {
-      const data = JSON.stringify(categories);
-      try { await window.storage.set("baking:cats", data); } catch (_) {
-        try { localStorage.setItem("baking:cats", data); } catch (_) {}
-      }
-    };
-    save();
-  }, [categories, loaded]);
   // ── 헬퍼 ──────────────────────────────────────────────────
-  const today = new Date(TODAY);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
   const getCatObj = (name) => categories.find(c => c.name === name) || { name, icon: "📦", color: "#b8c8d8" };
   const showNotif = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 2500); };
 
@@ -193,7 +167,7 @@ export default function BakingInventory() {
 
   // ── 로딩 화면 ─────────────────────────────────────────────
   if (!loaded) return (
-    <div style={{ minHeight: "100vh", background: "#fdf8f3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: "#fdf8f3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Noto Sans KR', sans-serif" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>🥐</div>
       <div style={{ fontSize: 14, color: "#9a8878" }}>재고 불러오는 중...</div>
     </div>
@@ -201,7 +175,7 @@ export default function BakingInventory() {
 
   // ── 렌더 ──────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "#fdf8f3", fontFamily: "'Noto Serif KR', Georgia, serif", color: "#3a2e24" }}>
+    <div style={{ minHeight: "100vh", background: "#fdf8f3", fontFamily: "'Noto Sans KR', sans-serif", color: "#3a2e24" }}>
 
       {/* 알림 토스트 */}
       {notification && (
@@ -218,17 +192,30 @@ export default function BakingInventory() {
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#f5ede0" }}>베이킹 재고 관리</div>
             <div style={{ fontSize: 11, color: "#c4a882", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-              기준일: 2026년 4월 25일
+              {todayStr}
               <span style={{ background: "#6dbb8a44", color: "#a8e8b8", fontSize: 10, padding: "1px 7px", borderRadius: 8, fontWeight: 600 }}>💾 자동저장</span>
             </div>
           </div>
         </div>
 
-        {/* 생크림 긴급 배너 */}
-        <div style={{ background: "#c45c5c22", border: "1px solid #c45c5c66", borderRadius: 10, padding: "10px 14px", marginTop: 12, marginBottom: 4 }}>
-          <div style={{ fontSize: 11, color: "#ffbcbc", fontWeight: 700 }}>⚡ 긴급 사용 필요</div>
-          <div style={{ fontSize: 12, color: "#ffeaea", marginTop: 2 }}>생크림 (개봉) — 오늘 개봉, 4월 28일까지 사용하세요!</div>
-        </div>
+        {/* 유통기한 임박 긴급 배너 (확인하면 다시 안 뜸) */}
+        {urgentAlerts.filter(item => !dismissedBanners.includes(item.id)).map(item => {
+          const daysLeft = Math.ceil((new Date(item.expiry) - today) / (1000 * 60 * 60 * 24));
+          return (
+            <div key={item.id} style={{ background: "#c45c5c22", border: "1px solid #c45c5c66", borderRadius: 10, padding: "10px 14px", marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 11, color: "#ffbcbc", fontWeight: 700 }}>⚡ 긴급 사용 필요</div>
+                <div style={{ fontSize: 12, color: "#ffeaea", marginTop: 2 }}>
+                  {item.name} — {daysLeft > 0 ? `${daysLeft}일 남음` : "오늘 만료!"}
+                </div>
+              </div>
+              <button onClick={() => setDismissedBanners(prev => [...prev, item.id])}
+                style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#ffeaea", borderRadius: 7, padding: "5px 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 10 }}>
+                확인 ✕
+              </button>
+            </div>
+          );
+        })}
 
         <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
           {[
@@ -547,7 +534,7 @@ export default function BakingInventory() {
         </div>
       )}
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap'); @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap'); @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }`}</style>
     </div>
   );
 }
