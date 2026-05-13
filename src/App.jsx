@@ -1,4 +1,18 @@
 import { useState, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBEdataNVwjVShvSjRWXpHAOkLTAvtYKEc",
+  authDomain: "baking-inventory-a6955.firebaseapp.com",
+  projectId: "baking-inventory-a6955",
+  storageBucket: "baking-inventory-a6955.firebasestorage.app",
+  messagingSenderId: "743396766798",
+  appId: "1:743396766798:web:1f3b1e7c0061c00d587f1f"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
 const UNITS = ["g", "kg", "ml", "L", "개", "tsp", "tbsp", "컵"];
 
@@ -79,24 +93,40 @@ export default function BakingInventory() {
   const [shoppingList, setShoppingList] = useState([]);
   const [shopInput, setShopInput] = useState("");
 
-  // ── 저장/불러오기 ──────────────────────────────────────────
+  // ── Firebase 저장/불러오기 ──────────────────────────────────
   useEffect(() => {
-    try { const v = localStorage.getItem("baking:items"); if (v) setItems(JSON.parse(v)); } catch (_) {}
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, "baking", "data"));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.items) setItems(data.items);
+          if (data.categories) {
+            const parsed = data.categories;
+            if (Array.isArray(parsed) && typeof parsed[0] === "string") {
+              setCategories(parsed.map(name => DEFAULT_CATEGORIES.find(c => c.name === name) || { name, icon: "📦", color: "#b8c8d8" }));
+            } else { setCategories(parsed); }
+          }
+          if (data.shoppingList) setShoppingList(data.shoppingList);
+        }
+      } catch (e) { console.error("불러오기 실패:", e); }
+      setLoaded(true);
+    })();
+  }, []);
+
+  const saveToFirebase = async (newItems, newCats, newShopping) => {
     try {
-      const v = localStorage.getItem("baking:cats");
-      if (v) {
-        const parsed = JSON.parse(v);
-        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
-          setCategories(parsed.map(name => DEFAULT_CATEGORIES.find(c => c.name === name) || { name, icon: "📦", color: "#b8c8d8" }));
-        } else { setCategories(parsed); }
-      }
-    } catch (_) {}
-    try { const v = localStorage.getItem("baking:dismissed"); if (v) setDismissedBanners(JSON.parse(v)); } catch (_) {}
-    try { const v = localStorage.getItem("baking:shopping"); if (v) setShoppingList(JSON.parse(v)); } catch (_) {}
-    setLoaded(true);  }, []);
-  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:items", JSON.stringify(items)); } catch (_) {} }, [items, loaded]);
-  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:cats", JSON.stringify(categories)); } catch (_) {} }, [categories, loaded]);
-  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:shopping", JSON.stringify(shoppingList)); } catch (_) {} }, [shoppingList, loaded]);
+      await setDoc(doc(db, "baking", "data"), {
+        items: newItems,
+        categories: newCats,
+        shoppingList: newShopping,
+      });
+    } catch (e) { console.error("저장 실패:", e); }
+  };
+
+  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [items, loaded]);
+  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [categories, loaded]);
+  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [shoppingList, loaded]);
 
   // ── 헬퍼 ──────────────────────────────────────────────────
   const today = new Date();
