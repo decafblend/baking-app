@@ -76,6 +76,8 @@ export default function BakingInventory() {
   const [notification, setNotification] = useState(null);
 
   const [dismissedBanners, setDismissedBanners] = useState([]);
+  const [shoppingList, setShoppingList] = useState([]);
+  const [shopInput, setShopInput] = useState("");
 
   // ── 저장/불러오기 ──────────────────────────────────────────
   useEffect(() => {
@@ -90,11 +92,11 @@ export default function BakingInventory() {
       }
     } catch (_) {}
     try { const v = localStorage.getItem("baking:dismissed"); if (v) setDismissedBanners(JSON.parse(v)); } catch (_) {}
-    setLoaded(true);
-  }, []);
+    try { const v = localStorage.getItem("baking:shopping"); if (v) setShoppingList(JSON.parse(v)); } catch (_) {}
+    setLoaded(true);  }, []);
   useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:items", JSON.stringify(items)); } catch (_) {} }, [items, loaded]);
   useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:cats", JSON.stringify(categories)); } catch (_) {} }, [categories, loaded]);
-  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:dismissed", JSON.stringify(dismissedBanners)); } catch (_) {} }, [dismissedBanners, loaded]);
+  useEffect(() => { if (!loaded) return; try { localStorage.setItem("baking:shopping", JSON.stringify(shoppingList)); } catch (_) {} }, [shoppingList, loaded]);
 
   // ── 헬퍼 ──────────────────────────────────────────────────
   const today = new Date();
@@ -234,18 +236,21 @@ export default function BakingInventory() {
 
       {/* 탭 */}
       <div style={{ display: "flex", background: "#fff", borderBottom: "2px solid #f0e8de" }}>
-        {["재고", "알림", "카테고리"].map(tab => (
+        {["재고", "알림", "쇼핑", "카테고리"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             flex: 1, padding: "13px 0", border: "none", cursor: "pointer",
             background: activeTab === tab ? "#fdf8f3" : "#fff",
             color: activeTab === tab ? "#5c4a36" : "#9a8878",
-            fontWeight: activeTab === tab ? 700 : 400, fontSize: 14,
+            fontWeight: activeTab === tab ? 700 : 400, fontSize: 13,
             borderBottom: activeTab === tab ? "2px solid #c8a882" : "2px solid transparent",
             marginBottom: -2, fontFamily: "inherit",
           }}>
             {tab}
             {tab === "알림" && alerts.length > 0 && (
               <span style={{ background: "#e07b54", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 11, marginLeft: 4 }}>{alerts.length}</span>
+            )}
+            {tab === "쇼핑" && shoppingList.filter(i => !i.done).length > 0 && (
+              <span style={{ background: "#6dbb8a", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 11, marginLeft: 4 }}>{shoppingList.filter(i => !i.done).length}</span>
             )}
           </button>
         ))}
@@ -378,6 +383,85 @@ export default function BakingInventory() {
           </div>
         )}
 
+        {/* ── 쇼핑 탭 ── */}
+        {activeTab === "쇼핑" && (() => {
+          const lowItems = items.filter(i => getStatus(i) === "low");
+          const addItem = (name, auto = false) => {
+            if (!name.trim()) return;
+            if (shoppingList.find(i => i.name === name.trim() && !i.done)) return;
+            setShoppingList(prev => [...prev, { id: Date.now(), name: name.trim(), done: false, auto }]);
+          };
+          const toggle = (id) => setShoppingList(prev => prev.map(i => i.id === id ? { ...i, done: !i.done } : i));
+          const remove = (id) => setShoppingList(prev => prev.filter(i => i.id !== id));
+          const clearDone = () => setShoppingList(prev => prev.filter(i => !i.done));
+          const pending = shoppingList.filter(i => !i.done);
+          const done = shoppingList.filter(i => i.done);
+
+          return (
+            <div>
+              {/* 직접 입력 */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <input value={shopInput} onChange={e => setShopInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { addItem(shopInput); setShopInput(""); } }}
+                  placeholder="살 재료 입력..."
+                  style={{ flex: 1, padding: "11px 13px", borderRadius: 10, border: "1.5px solid #e8ddd4", fontSize: 14, background: "#fff", fontFamily: "inherit", outline: "none", color: "#3a2e24" }} />
+                <button onClick={() => { addItem(shopInput); setShopInput(""); }}
+                  style={{ padding: "0 16px", borderRadius: 10, border: "none", background: "#5c4a36", color: "#f5ede0", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>추가</button>
+              </div>
+
+              {/* 재고 부족 자동 추천 */}
+              {lowItems.length > 0 && (
+                <div style={{ background: "#fff8f4", borderRadius: 12, padding: "12px 14px", marginBottom: 16, border: "1.5px solid #f0ddd4" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#e07b54", marginBottom: 8 }}>📉 재고 부족 — 빠르게 추가</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {lowItems.map(item => {
+                      const already = shoppingList.find(i => i.name === item.name && !i.done);
+                      return (
+                        <button key={item.id} onClick={() => addItem(item.name, true)}
+                          disabled={!!already}
+                          style={{ padding: "5px 12px", borderRadius: 16, border: "1.5px solid #e8ddd4", background: already ? "#f0f0f0" : "#fff", color: already ? "#b0a090" : "#5c4a36", fontSize: 12, cursor: already ? "default" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                          {already ? "✓ " : "+ "}{item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 목록 */}
+              {shoppingList.length === 0
+                ? <div style={{ textAlign: "center", padding: "50px 0", color: "#b0a090", fontSize: 14 }}>🛒 살 재료를 추가해보세요!</div>
+                : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {pending.map(item => (
+                      <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 14px", boxShadow: "0 2px 8px rgba(58,46,36,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+                        <button onClick={() => toggle(item.id)} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid #c8a882", background: "#fff", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }} />
+                        <span style={{ flex: 1, fontSize: 14, color: "#3a2e24", fontWeight: 500 }}>{item.name}</span>
+                        {item.auto && <span style={{ fontSize: 10, color: "#e07b54", background: "#fff4f0", padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>부족</span>}
+                        <button onClick={() => remove(item.id)} style={{ color: "#c8b8a8", background: "none", border: "none", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+
+                    {done.length > 0 && (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                          <div style={{ fontSize: 12, color: "#b0a090", fontWeight: 600 }}>완료 {done.length}개</div>
+                          <button onClick={clearDone} style={{ fontSize: 11, color: "#c45c5c", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>전체 삭제</button>
+                        </div>
+                        {done.map(item => (
+                          <div key={item.id} style={{ background: "#f8f8f8", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, opacity: 0.6 }}>
+                            <button onClick={() => toggle(item.id)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#6dbb8a", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13 }}>✓</button>
+                            <span style={{ flex: 1, fontSize: 14, color: "#9a8878", textDecoration: "line-through" }}>{item.name}</span>
+                            <button onClick={() => remove(item.id)} style={{ color: "#c8b8a8", background: "none", border: "none", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+              }
+            </div>
+          );
+        })()}
+
         {/* ── 카테고리 탭 ── */}
         {activeTab === "카테고리" && (
           <div>
@@ -457,7 +541,7 @@ export default function BakingInventory() {
                   >
                     <div style={{ color: "#c8b8a8", fontSize: 16, flexShrink: 0 }}>☰</div>
                     <div style={{ width: 36, height: 36, borderRadius: 9, background: cat.color + "35", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{cat.icon}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: "#3a2e24" }}>{cat.name}</div>
                       <div style={{ fontSize: 11, color: "#9a8878", marginTop: 1 }}>재료 {count}종</div>
                     </div>
