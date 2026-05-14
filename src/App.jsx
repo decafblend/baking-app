@@ -40,30 +40,7 @@ const DEFAULT_CATEGORIES = [
   { name: "기타",          icon: "📦", color: "#b8c8d8" },
 ];
 
-const DEFAULT_ITEMS = [
-  { id: 1,  name: "중력분",            category: "밀가루류", quantity: null, unit: "g",  minStock: 300, expiry: "2027-04-25" },
-  { id: 2,  name: "박력분",            category: "밀가루류", quantity: null, unit: "g",  minStock: 300, expiry: "2027-04-25" },
-  { id: 3,  name: "아몬드 가루",       category: "밀가루류", quantity: null, unit: "g",  minStock: 100, expiry: "2027-04-25" },
-  { id: 4,  name: "옥수수 전분",       category: "밀가루류", quantity: null, unit: "g",  minStock: 100, expiry: "2027-04-25" },
-  { id: 5,  name: "베이킹소다",        category: "팽창제",   quantity: null, unit: "g",  minStock: 30,  expiry: "2027-04-25" },
-  { id: 6,  name: "베이킹파우더",      category: "팽창제",   quantity: null, unit: "g",  minStock: 30,  expiry: "2027-04-25" },
-  { id: 7,  name: "비정제 유기농설탕", category: "당류",     quantity: null, unit: "g",  minStock: 200, expiry: "2028-04-25" },
-  { id: 8,  name: "백설탕",            category: "당류",     quantity: null, unit: "g",  minStock: 200, expiry: "2028-04-25" },
-  { id: 9,  name: "슈가 파우더",       category: "당류",     quantity: 670,  unit: "g",  minStock: 200, expiry: "2028-04-25" },
-  { id: 10, name: "코코아 파우더",     category: "향신료",   quantity: 130,  unit: "g",  minStock: 50,  expiry: "2027-04-25" },
-  { id: 11, name: "녹차 파우더",       category: "향신료",   quantity: 90,   unit: "g",  minStock: 30,  expiry: "2027-04-25" },
-  { id: 12, name: "바닐라빈 익스트렉", category: "기타",     quantity: null, unit: "ml", minStock: 20,  expiry: "2028-04-25" },
-  { id: 13, name: "레이디핑거",        category: "기타",     quantity: null, unit: "개", minStock: 10,  expiry: "2027-04-25" },
-  { id: 14, name: "판젤라틴",          category: "기타",     quantity: 10,   unit: "개", minStock: 5,   expiry: "2027-04-25" },
-  { id: 15, name: "프레지덩 버터",     category: "유제품",   quantity: 53,   unit: "g",  minStock: 50,  expiry: "2026-09-30" },
-  { id: 16, name: "생크림 (개봉)",     category: "유제품",   quantity: 350,  unit: "ml", minStock: 0,   expiry: "2026-04-28" },
-  // 장바구니에서 추가 (2026-04-25)
-  { id: 17, name: "오트밀",                        category: "기타",   quantity: 500, unit: "g", minStock: 100, expiry: "2027-04-25" },
-  { id: 18, name: "엘르앤비르 고메버터",           category: "유제품", quantity: 500, unit: "g", minStock: 100, expiry: "2026-12-31" },
-  { id: 19, name: "화이트커버춰 (칼리바우트 28%)", category: "초콜릿류", quantity: 200, unit: "g", minStock: 50,  expiry: "2027-04-25" },
-  { id: 20, name: "프레지덩 버터 냉동",            category: "유제품",   quantity: 400, unit: "g", minStock: 100, expiry: "2027-04-25" },
-  { id: 21, name: "까라이브 (발로나 66%)",         category: "초콜릿류", quantity: 37,  unit: "g", minStock: 20,  expiry: "2027-04-25" },
-];
+const DEFAULT_ITEMS = [];
 
 const STATUS_CONFIG = {
   ok:      { label: "정상",      color: "#6dbb8a", bg: "#f0faf4" },
