@@ -101,9 +101,10 @@ export default function BakingInventory() {
     } catch (e) { console.error("저장 실패:", e); }
   };
 
-  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [items, loaded]);
-  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [categories, loaded]);
-  useEffect(() => { if (!loaded) return; saveToFirebase(items, categories, shoppingList); }, [shoppingList, loaded]);
+  useEffect(() => {
+    if (!loaded) return;
+    saveToFirebase(items, categories, shoppingList);
+  }, [items, categories, shoppingList, loaded]);
 
   // ── 헬퍼 ──────────────────────────────────────────────────
   const today = new Date();
