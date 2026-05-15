@@ -69,6 +69,12 @@ export default function BakingInventory() {
   const [dismissedBanners, setDismissedBanners] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
   const [shopInput, setShopInput] = useState("");
+  const [recipes, setRecipes] = useState([]);
+  const [bakingMode, setBakingMode] = useState("recipe"); // "recipe" | "manual"
+  const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [recipeForm, setRecipeForm] = useState({ name: "", servings: 1, ingredients: [] });
+  const [recipeIngInput, setRecipeIngInput] = useState({ name: "", amount: "", unit: "g" });
+  const [manualDeduct, setManualDeduct] = useState([]); // [{itemId, amount}]
 
   // ── Firebase 저장/불러오기 ──────────────────────────────────
   useEffect(() => {
@@ -85,26 +91,28 @@ export default function BakingInventory() {
             } else { setCategories(parsed); }
           }
           if (data.shoppingList) setShoppingList(data.shoppingList);
+          if (data.recipes) setRecipes(data.recipes);
         }
       } catch (e) { console.error("불러오기 실패:", e); }
       setLoaded(true);
     })();
   }, []);
 
-  const saveToFirebase = async (newItems, newCats, newShopping) => {
+  const saveToFirebase = async (newItems, newCats, newShopping, newRecipes) => {
     try {
       await setDoc(doc(db, "baking", "data"), {
         items: newItems,
         categories: newCats,
         shoppingList: newShopping,
+        recipes: newRecipes,
       });
     } catch (e) { console.error("저장 실패:", e); }
   };
 
   useEffect(() => {
     if (!loaded) return;
-    saveToFirebase(items, categories, shoppingList);
-  }, [items, categories, shoppingList, loaded]);
+    saveToFirebase(items, categories, shoppingList, recipes);
+  }, [items, categories, shoppingList, recipes, loaded]);
 
   // ── 헬퍼 ──────────────────────────────────────────────────
   const today = new Date();
@@ -244,7 +252,7 @@ export default function BakingInventory() {
 
       {/* 탭 */}
       <div style={{ display: "flex", background: "#fff", borderBottom: "2px solid #f0e8de" }}>
-        {["재고", "알림", "쇼핑", "카테고리"].map(tab => (
+        {["재고", "알림", "베이킹", "쇼핑", "카테고리"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             flex: 1, padding: "13px 0", border: "none", cursor: "pointer",
             background: activeTab === tab ? "#fdf8f3" : "#fff",
@@ -337,7 +345,23 @@ export default function BakingInventory() {
                       <div style={{ fontSize: 10, color: daysLeft <= 7 ? "#c45c5c" : "#9a8878" }}>
                         {item.expiry} ({daysLeft > 0 ? `${daysLeft}일 남음` : "만료됨"})
                       </div>
-                      <div style={{ display: "flex", gap: 5 }}>
+                      <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                        {/* 빠른 차감/추가 */}
+                        {item.quantity !== null && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fdf8f3", borderRadius: 8, padding: "2px 6px", border: "1.5px solid #e8ddd4" }}>
+                            <button onClick={() => {
+                              const step = item.unit === "개" ? 1 : 10;
+                              setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(0, i.quantity - step) } : i));
+                            }} style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: "#e8ddd4", color: "#5c4a36", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>−</button>
+                            <span style={{ fontSize: 11, color: "#5c4a36", fontWeight: 600, minWidth: 20, textAlign: "center" }}>
+                              {item.unit === "개" ? 1 : 10}{item.unit}
+                            </span>
+                            <button onClick={() => {
+                              const step = item.unit === "개" ? 1 : 10;
+                              setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + step } : i));
+                            }} style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: "#e8ddd4", color: "#5c4a36", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>+</button>
+                          </div>
+                        )}
                         <button onClick={() => openEdit(item)} style={{ padding: "4px 10px", borderRadius: 7, border: "1.5px solid #e8ddd4", background: "#fdf8f3", color: "#7a6858", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>수정</button>
                         <button onClick={() => handleDelete(item.id, item.name)} style={{ padding: "4px 10px", borderRadius: 7, border: "1.5px solid #f5d0c8", background: "#fff8f6", color: "#c45c5c", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>삭제</button>
                       </div>
@@ -388,6 +412,182 @@ export default function BakingInventory() {
                   })}
                 </div>
             }
+          </div>
+        )}
+
+        {/* ── 베이킹 탭 ── */}
+        {activeTab === "베이킹" && (
+          <div>
+            {/* 모드 선택 */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button onClick={() => setBakingMode("recipe")} style={{ flex: 1, padding: "10px", borderRadius: 10, border: bakingMode === "recipe" ? "2px solid #c8a882" : "1.5px solid #e8ddd4", background: bakingMode === "recipe" ? "#5c4a36" : "#fff", color: bakingMode === "recipe" ? "#f5ede0" : "#7a6858", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>🍰 레시피로 차감</button>
+              <button onClick={() => setBakingMode("manual")} style={{ flex: 1, padding: "10px", borderRadius: 10, border: bakingMode === "manual" ? "2px solid #c8a882" : "1.5px solid #e8ddd4", background: bakingMode === "manual" ? "#5c4a36" : "#fff", color: bakingMode === "manual" ? "#f5ede0" : "#7a6858", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>✏️ 직접 입력</button>
+            </div>
+
+            {/* ── 방식 1: 레시피 ── */}
+            {bakingMode === "recipe" && (
+              <div>
+                {/* 레시피 등록 폼 */}
+                {showRecipeForm ? (
+                  <div style={{ background: "#fff", borderRadius: 14, padding: "16px", boxShadow: "0 2px 12px rgba(58,46,36,0.08)", marginBottom: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#5c4a36", marginBottom: 12 }}>새 레시피 등록</div>
+
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#7a6858", marginBottom: 4 }}>레시피 이름</div>
+                      <input value={recipeForm.name} onChange={e => setRecipeForm(p => ({ ...p, name: e.target.value }))} placeholder="예: 휘낭시에"
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 9, border: "1.5px solid #e8ddd4", fontSize: 14, fontFamily: "inherit", color: "#3a2e24", outline: "none", boxSizing: "border-box" }} />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#7a6858", marginBottom: 4 }}>기준 인분/개수</div>
+                      <input type="number" value={recipeForm.servings} onChange={e => setRecipeForm(p => ({ ...p, servings: Number(e.target.value) }))}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 9, border: "1.5px solid #e8ddd4", fontSize: 14, fontFamily: "inherit", color: "#3a2e24", outline: "none", boxSizing: "border-box" }} />
+                    </div>
+
+                    {/* 재료 추가 */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#7a6858", marginBottom: 6 }}>재료</div>
+                      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                        <select value={recipeIngInput.name} onChange={e => setRecipeIngInput(p => ({ ...p, name: e.target.value }))}
+                          style={{ flex: 2, padding: "8px 10px", borderRadius: 9, border: "1.5px solid #e8ddd4", fontSize: 13, fontFamily: "inherit", color: "#3a2e24", outline: "none" }}>
+                          <option value="">재료 선택</option>
+                          {items.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                        </select>
+                        <input type="number" value={recipeIngInput.amount} onChange={e => setRecipeIngInput(p => ({ ...p, amount: e.target.value }))} placeholder="양"
+                          style={{ flex: 1, padding: "8px 10px", borderRadius: 9, border: "1.5px solid #e8ddd4", fontSize: 13, fontFamily: "inherit", color: "#3a2e24", outline: "none" }} />
+                        <select value={recipeIngInput.unit} onChange={e => setRecipeIngInput(p => ({ ...p, unit: e.target.value }))}
+                          style={{ flex: 1, padding: "8px 6px", borderRadius: 9, border: "1.5px solid #e8ddd4", fontSize: 13, fontFamily: "inherit", color: "#3a2e24", outline: "none" }}>
+                          {UNITS.map(u => <option key={u}>{u}</option>)}
+                        </select>
+                        <button onClick={() => {
+                          if (!recipeIngInput.name || !recipeIngInput.amount) return;
+                          setRecipeForm(p => ({ ...p, ingredients: [...p.ingredients, { ...recipeIngInput, amount: Number(recipeIngInput.amount) }] }));
+                          setRecipeIngInput(p => ({ ...p, name: "", amount: "" }));
+                        }} style={{ padding: "8px 12px", borderRadius: 9, border: "none", background: "#5c4a36", color: "#f5ede0", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>+</button>
+                      </div>
+
+                      {/* 추가된 재료 목록 */}
+                      {recipeForm.ingredients.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {recipeForm.ingredients.map((ing, idx) => (
+                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f3", borderRadius: 8, padding: "7px 12px" }}>
+                              <span style={{ fontSize: 13, color: "#3a2e24" }}>{ing.name}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 13, color: "#7a6858" }}>{ing.amount}{ing.unit}</span>
+                                <button onClick={() => setRecipeForm(p => ({ ...p, ingredients: p.ingredients.filter((_, i) => i !== idx) }))}
+                                  style={{ background: "none", border: "none", color: "#c45c5c", fontSize: 16, cursor: "pointer", lineHeight: 1 }}>×</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => { setShowRecipeForm(false); setRecipeForm({ name: "", servings: 1, ingredients: [] }); }}
+                        style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1.5px solid #e8ddd4", background: "#fff", color: "#7a6858", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>취소</button>
+                      <button onClick={() => {
+                        if (!recipeForm.name || recipeForm.ingredients.length === 0) return;
+                        setRecipes(prev => [...prev, { id: Date.now(), ...recipeForm }]);
+                        setShowRecipeForm(false);
+                        setRecipeForm({ name: "", servings: 1, ingredients: [] });
+                        showNotif(`'${recipeForm.name}' 레시피 저장!`);
+                      }} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #5c4a36, #3a2e24)", color: "#f5ede0", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>저장</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowRecipeForm(true)}
+                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "2px dashed #c8a882", background: "#fdf8f3", color: "#8a7060", fontSize: 14, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, marginBottom: 12 }}>
+                    + 새 레시피 등록
+                  </button>
+                )}
+
+                {/* 레시피 목록 */}
+                {recipes.length === 0 && !showRecipeForm && (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "#b0a090", fontSize: 14 }}>등록된 레시피가 없어요</div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {recipes.map(recipe => (
+                    <div key={recipe.id} style={{ background: "#fff", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 12px rgba(58,46,36,0.06)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: "#3a2e24" }}>{recipe.name}</div>
+                          <div style={{ fontSize: 11, color: "#9a8878", marginTop: 2 }}>기준 {recipe.servings}개</div>
+                        </div>
+                        <button onClick={() => setRecipes(prev => prev.filter(r => r.id !== recipe.id))}
+                          style={{ color: "#c8b8a8", background: "none", border: "none", fontSize: 18, cursor: "pointer" }}>×</button>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                        {recipe.ingredients.map((ing, idx) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#7a6858" }}>
+                            <span>{ing.name}</span>
+                            <span>{ing.amount}{ing.unit}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={() => {
+                        let canDeduct = true;
+                        recipe.ingredients.forEach(ing => {
+                          const item = items.find(i => i.name === ing.name);
+                          if (!item || item.quantity === null) canDeduct = false;
+                        });
+                        if (!canDeduct) { showNotif("수량 미입력 재료가 있어요.", "error"); return; }
+                        setItems(prev => prev.map(item => {
+                          const ing = recipe.ingredients.find(i => i.name === item.name);
+                          if (!ing) return item;
+                          return { ...item, quantity: Math.max(0, item.quantity - ing.amount) };
+                        }));
+                        showNotif(`${recipe.name} 재료 차감 완료!`);
+                      }} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #5c4a36, #3a2e24)", color: "#f5ede0", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                        🍳 재고에서 차감하기
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── 방식 2: 직접 입력 ── */}
+            {bakingMode === "manual" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#9a8878", marginBottom: 12 }}>차감할 재료와 양을 입력하세요</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  {items.filter(i => i.quantity !== null).map(item => {
+                    const entry = manualDeduct.find(d => d.itemId === item.id);
+                    return (
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 12, padding: "10px 14px", boxShadow: "0 2px 8px rgba(58,46,36,0.05)" }}>
+                        <span style={{ fontSize: 15 }}>{getCatObj(item.category).icon}</span>
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#3a2e24" }}>{item.name}</span>
+                        <span style={{ fontSize: 11, color: "#9a8878", marginRight: 4 }}>{item.quantity}{item.unit}</span>
+                        <input type="number" value={entry?.amount || ""} onChange={e => {
+                          const val = e.target.value;
+                          setManualDeduct(prev => {
+                            const exists = prev.find(d => d.itemId === item.id);
+                            if (!val) return prev.filter(d => d.itemId !== item.id);
+                            if (exists) return prev.map(d => d.itemId === item.id ? { ...d, amount: Number(val) } : d);
+                            return [...prev, { itemId: item.id, amount: Number(val) }];
+                          });
+                        }} placeholder="0"
+                          style={{ width: 60, padding: "6px 8px", borderRadius: 8, border: "1.5px solid #e8ddd4", fontSize: 13, textAlign: "right", fontFamily: "inherit", outline: "none", color: "#3a2e24" }} />
+                        <span style={{ fontSize: 12, color: "#9a8878" }}>{item.unit}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={() => {
+                  if (manualDeduct.length === 0) { showNotif("차감할 양을 입력해주세요.", "error"); return; }
+                  setItems(prev => prev.map(item => {
+                    const entry = manualDeduct.find(d => d.itemId === item.id);
+                    if (!entry) return item;
+                    return { ...item, quantity: Math.max(0, item.quantity - entry.amount) };
+                  }));
+                  setManualDeduct([]);
+                  showNotif("재고 차감 완료!");
+                }} style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #5c4a36, #3a2e24)", color: "#f5ede0", fontSize: 14, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                  재고에서 차감하기
+                </button>
+              </div>
+            )}
           </div>
         )}
 
