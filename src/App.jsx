@@ -180,7 +180,7 @@ export default function BakingInventory() {
   const TABS = ["재고","알림","베이킹","쇼핑","카테고리"];
 
   return (
-    <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"'Noto Sans KR', sans-serif", color:T.text, maxWidth:480, margin:"0 auto" }}>
+    <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"'Noto Sans KR', sans-serif", color:T.text, maxWidth:480, margin:"0 auto", overflowX:"hidden" }}>
 
       {/* 알림 토스트 */}
       {notification && (
@@ -190,46 +190,41 @@ export default function BakingInventory() {
       )}
 
       {/* 헤더 */}
-      <div style={{ padding:"24px 20px 0", borderBottom:`1px solid ${T.border}` }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
+      <div style={{ padding:"16px 20px 0", borderBottom:`1px solid ${T.border}`, width:"100%", boxSizing:"border-box" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
           <div>
-            <div style={{ fontSize:20, fontWeight:700, letterSpacing:"-0.5px" }}>🥐 베이킹 재고</div>
-            <div style={{ fontSize:11, color:T.text3, marginTop:3 }}>{todayStr}</div>
+            <div style={{ fontSize:18, fontWeight:700, letterSpacing:"-0.5px" }}>🥐 베이킹 재고</div>
+            <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{todayStr}</div>
           </div>
-          <div style={{ display:"flex", gap:8 }}>
-            {urgentAlerts.filter(i => !dismissedBanners.includes(i.id)).length > 0 && (
-              <div style={{ background:"#fff0f0", border:"1px solid #ffd0d0", borderRadius:20, padding:"5px 12px", fontSize:11, color:"#e05050", fontWeight:600 }}>
-                ⚡ {urgentAlerts.filter(i => !dismissedBanners.includes(i.id)).length}개 긴급
-              </div>
-            )}
-          </div>
+          {urgentAlerts.filter(i => !dismissedBanners.includes(i.id)).length > 0 && (
+            <div style={{ background:"#fff0f0", border:"1px solid #ffd0d0", borderRadius:20, padding:"4px 10px", fontSize:11, color:"#e05050", fontWeight:600 }}>
+              ⚡ {urgentAlerts.filter(i => !dismissedBanners.includes(i.id)).length}개 긴급
+            </div>
+          )}
         </div>
 
         {/* 긴급 배너 */}
         {urgentAlerts.filter(i => !dismissedBanners.includes(i.id)).map(item => {
           const d = Math.ceil((new Date(item.expiry) - today) / 86400000);
           return (
-            <div key={item.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"#fff8f0", border:"1px solid #ffe0c0", borderRadius:10, padding:"10px 14px", marginBottom:8 }}>
-              <div>
-                <div style={{ fontSize:11, color:"#e07020", fontWeight:700, marginBottom:2 }}>유통기한 임박</div>
-                <div style={{ fontSize:13, color:T.text, fontWeight:500 }}>{item.name} · {d > 0 ? `${d}일 남음` : "오늘 만료"}</div>
-              </div>
+            <div key={item.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"#fff8f0", border:"1px solid #ffe0c0", borderRadius:10, padding:"8px 12px", marginBottom:6 }}>
+              <div style={{ fontSize:12, color:T.text, fontWeight:500 }}>{item.name} · {d > 0 ? `${d}일 남음` : "오늘 만료"}</div>
               <button onClick={() => setDismissedBanners(p => [...p, item.id])}
-                style={{ background:"none", border:"none", color:T.text3, fontSize:18, cursor:"pointer", padding:"0 4px" }}>×</button>
+                style={{ background:"none", border:"none", color:T.text3, fontSize:18, cursor:"pointer", padding:"0 4px", lineHeight:1 }}>×</button>
             </div>
           );
         })}
 
-        {/* 요약 카드 */}
-        <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+        {/* 요약 — 가로 한 줄 */}
+        <div style={{ display:"flex", gap:6, marginBottom:12 }}>
           {[
             { label:"전체", value:items.length },
             { label:"주의", value:alerts.length, warn:true },
             { label:"미입력", value:items.filter(i=>i.quantity===null).length },
           ].map(s => (
-            <div key={s.label} style={{ flex:1, background: s.warn && s.value > 0 ? "#fff4f0" : T.bg2, borderRadius:10, padding:"10px 12px", border:`1px solid ${s.warn && s.value > 0 ? "#ffd0c0" : T.border}` }}>
-              <div style={{ fontSize:18, fontWeight:700, color: s.warn && s.value > 0 ? "#e07b54" : T.text }}>{s.value}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:1 }}>{s.label}</div>
+            <div key={s.label} style={{ flex:1, background: s.warn && s.value > 0 ? "#fff4f0" : T.bg2, borderRadius:8, padding:"7px 8px", border:`1px solid ${s.warn && s.value > 0 ? "#ffd0c0" : T.border}`, display:"flex", alignItems:"center", gap:5, minWidth:0 }}>
+              <div style={{ fontSize:16, fontWeight:700, color: s.warn && s.value > 0 ? "#e07b54" : T.text, flexShrink:0 }}>{s.value}</div>
+              <div style={{ fontSize:11, color:T.text3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -238,23 +233,23 @@ export default function BakingInventory() {
         <div style={{ display:"flex", gap:0, marginBottom:-1 }}>
           {TABS.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              flex:1, padding:"10px 4px", border:"none", background:"none", cursor:"pointer",
+              flex:1, padding:"10px 2px", border:"none", background:"none", cursor:"pointer",
               color: activeTab===tab ? T.text : T.text3,
               fontWeight: activeTab===tab ? 700 : 400,
-              fontSize:12, fontFamily:"inherit",
+              fontSize:11, fontFamily:"inherit",
               borderBottom: activeTab===tab ? `2px solid ${T.text}` : "2px solid transparent",
-              position:"relative",
+              position:"relative", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
             }}>
               {tab}
-              {tab==="알림" && alerts.length > 0 && <span style={{ position:"absolute", top:6, right:4, width:6, height:6, borderRadius:"50%", background:"#e05050" }} />}
-              {tab==="쇼핑" && shoppingList.filter(i=>!i.done).length > 0 && <span style={{ position:"absolute", top:6, right:4, width:6, height:6, borderRadius:"50%", background:"#4caf7d" }} />}
+              {tab==="알림" && alerts.length > 0 && <span style={{ position:"absolute", top:6, right:2, width:5, height:5, borderRadius:"50%", background:"#e05050" }} />}
+              {tab==="쇼핑" && shoppingList.filter(i=>!i.done).length > 0 && <span style={{ position:"absolute", top:6, right:2, width:5, height:5, borderRadius:"50%", background:"#4caf7d" }} />}
             </button>
           ))}
         </div>
       </div>
 
       {/* 콘텐츠 */}
-      <div style={{ padding:"16px 20px 100px" }}>
+      <div style={{ padding:"16px 20px 100px", width:"100%", boxSizing:"border-box" }}>
 
         {/* ── 재고 탭 ── */}
         {activeTab==="재고" && (
@@ -264,25 +259,25 @@ export default function BakingInventory() {
               style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1px solid ${T.border}`, fontSize:14, background:T.bg2, fontFamily:"inherit", boxSizing:"border-box", outline:"none", color:T.text, marginBottom:12 }} />
 
             {/* 정렬 */}
-            <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:4 }}>
+            <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch", msOverflowStyle:"none", scrollbarWidth:"none" }}>
               {[{k:"default",l:"기본"},{k:"name",l:"이름"},{k:"expiry",l:"유통기한"},{k:"quantity",l:"수량"},{k:"category",l:"카테고리"}].map(s => (
-                <button key={s.k} onClick={()=>setSortBy(s.k)} style={{ whiteSpace:"nowrap", padding:"5px 12px", borderRadius:20, border:`1px solid ${sortBy===s.k ? T.text : T.border}`, background:sortBy===s.k ? T.text : T.bg, color:sortBy===s.k ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>{s.l}</button>
+                <button key={s.k} onClick={()=>setSortBy(s.k)} style={{ whiteSpace:"nowrap", padding:"5px 12px", borderRadius:20, border:`1px solid ${sortBy===s.k ? T.text : T.border}`, background:sortBy===s.k ? T.text : T.bg, color:sortBy===s.k ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, flexShrink:0 }}>{s.l}</button>
               ))}
             </div>
 
             {/* 카테고리 필터 */}
-            <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:4 }}>
+            <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch", msOverflowStyle:"none", scrollbarWidth:"none" }}>
               {[{name:"전체",icon:""}, ...categories].map(c => (
-                <button key={c.name} onClick={()=>setFilterCategory(c.name)} style={{ whiteSpace:"nowrap", padding:"5px 12px", borderRadius:20, border:`1px solid ${filterCategory===c.name ? T.text : T.border}`, background:filterCategory===c.name ? T.text : T.bg, color:filterCategory===c.name ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"flex", alignItems:"center", gap:4 }}>
+                <button key={c.name} onClick={()=>setFilterCategory(c.name)} style={{ whiteSpace:"nowrap", padding:"5px 12px", borderRadius:20, border:`1px solid ${filterCategory===c.name ? T.text : T.border}`, background:filterCategory===c.name ? T.text : T.bg, color:filterCategory===c.name ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"flex", alignItems:"center", gap:3, flexShrink:0 }}>
                   {c.icon && <span>{c.icon}</span>}{c.name}
                 </button>
               ))}
             </div>
 
             {/* 상태 필터 */}
-            <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch", msOverflowStyle:"none", scrollbarWidth:"none" }}>
               {["전체","ok","low","expiring","expired","unknown"].map(s => (
-                <button key={s} onClick={()=>setFilterStatus(s)} style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${filterStatus===s ? T.text : T.border}`, background:filterStatus===s ? T.text : T.bg, color:filterStatus===s ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
+                <button key={s} onClick={()=>setFilterStatus(s)} style={{ whiteSpace:"nowrap", padding:"4px 10px", borderRadius:20, border:`1px solid ${filterStatus===s ? T.text : T.border}`, background:filterStatus===s ? T.text : T.bg, color:filterStatus===s ? T.accentText : T.text2, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, flexShrink:0 }}>
                   {s==="전체"?"전체":STATUS_CONFIG[s].label}
                 </button>
               ))}
@@ -695,7 +690,7 @@ export default function BakingInventory() {
         </div>
       )}
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap'); * { -webkit-tap-highlight-color: transparent; } @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)} }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap'); * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; } html, body { overflow-x: hidden; width: 100%; margin: 0; padding: 0; } @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)} }`}</style>
     </div>
   );
 }
